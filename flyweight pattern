@@ -1,0 +1,142 @@
+Призначення
+Використовується для ефективної підтримки (в першу чергу для зменшення затрат пам'яті) великої кількості дрібних об'єктів.
+
+Опис
+Шаблон Легковаговик (Flyweight) використовує загальнодоступний легкий об'єкт (flyweight, легковаговик), який одночасно може використовуватися у великій кількості контекстів. Стан цього об'єкта поділяється на внутрішній, що містить інформацію, незалежну від контексту, і зовнішній, який залежить або змінюється разом з контекстом легковаговика. Об'єкти клієнтів відповідають за передачу зовнішнього стану легковаговика, коли йому це необхідно.
+
+Переваги
+Зменшує кількість об'єктів, що підлягають обробці.
+Зменшує вимоги до пам'яті.
+Недоліки
+Переміщення стану поза об'єктом розбиває інкапсуляцію та може бути менш ефективним, ніж збереження власного поля
+Застосування
+Шаблон Легковаговик можна використовувати коли:
+
+В програмі використовується велика кількість об'єктів.
+Затрати на збереження високі через велику кількість об'єктів.
+Більшість станів об'єктів можна зробити зовнішніми.
+Велика кількість груп об'єктів може бути замінена відносно малою кількістю загальнодоступних об'єктів, однократно видаливши зовнішній стан.
+Програма не залежить від ідентичності об'єктів. Оскільки об'єкти-легковаговики можуть використовуватися колективно, то тести на ідентичність будуть повертати значення "істина" ("true") для концептуально різних об'єктів.
+
+#include <istream>
+#include <string>
+#include <vector>
+#include <map>
+
+using namespace std;
+
+// моделює зображення
+// для простоти розуміння зображення подане пустою структурою
+struct Image
+{
+	// тут міститься щось важке
+	static Image load(string path)
+	{
+		return Image();
+	}
+};
+// базовий клас для персонажів
+class Unit
+{
+protected:
+	string name;
+	float health;
+	Image picture;
+};
+// неправильний варіант для наглядності
+struct Goblin : public Unit
+{
+	Goblin()
+	{
+		name = "Goblin";
+		health = 8;
+		picture = Image::load("Goblin.jpg");
+	}
+};
+struct Dragon : public Unit
+{
+	Dragon()
+	{
+		name = "Dragon";
+		health = 800;
+		picture = Image::load("Dragon.jpg");
+	}
+};
+// Легковик в дії
+// Сховище для зображень
+class UnitImagesFactory
+{
+private:
+	static map<string, Image> Images;
+	static UnitImagesFactory uif;
+	UnitImagesFactory()
+	{
+		Images["Dragon"] = Image::load("Dragon.jpg");
+		Images["Goblin"] = Image::load("Goblin.jpg");
+	}
+	virtual ~UnitImagesFactory() {}
+public:
+	static Image create_dragon_image()
+	{
+		return Images["Dragon"];
+	}
+	static Image create_goblin_image()
+	{
+		return Images["Goblin"];
+	}
+};
+map<string, Image> UnitImagesFactory::Images;
+UnitImagesFactory UnitImagesFactory::uif;
+// Конструктори гобліна і дракона дещо змінені для використання нашої фабрики
+struct BetterGoblin : public Unit
+{
+	BetterGoblin()
+	{
+		name = "Goblin";
+		health = 8;
+		picture = UnitImagesFactory::create_goblin_image();
+	}
+};
+struct BetterDragon : Unit
+{
+	BetterDragon()
+	{
+		name = "Dragon";
+		health = 800;
+		picture = UnitImagesFactory::create_dragon_image();
+	}
+};
+void main()
+{
+	// повільне створення
+	// зображення грузиться для кожного юніта
+	vector<Unit *> units;
+	for (int i = 0; i < 15; i++)
+	{
+		units.push_back(new Dragon());
+	}
+	for (int i = 0; i < 50; i++)
+	{
+		units.push_back(new Goblin());
+	}
+	// швидке створення
+	// готове зображення надається усім юнітам
+	vector<Unit *> better_units;
+	for (int i = 0; i < 15; i++)
+	{
+		better_units.push_back(new BetterDragon());
+	}
+	for (int i = 0; i < 50; i++)
+	{
+		better_units.push_back(new BetterGoblin());
+	}
+	// очищаємо динамічну пам'ять
+	for (int i = 0; i < 65; i++)
+	{
+		delete units[i];
+	}
+	for (int i = 0; i < 65; i++)
+	{
+		delete better_units[i];
+	}
+}
